@@ -23,7 +23,7 @@ export function Footer() {
               Founded by Alexandros Kodalis
             </h2>
             <p className="text-sm leading-7 text-muted-foreground sm:text-base">
-              alx-studio.de
+              ak-learn-code.github.io/alx-studio/
             </p>
           </div>
 

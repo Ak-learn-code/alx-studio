@@ -9,7 +9,7 @@ Vercel.
 
 ## Domain
 
-alx-studio.de
+ak-learn-code.github.io/alx-studio/
 
 ## Requirements
 

@@ -13,7 +13,7 @@ Alexandros Kodalis
 
 ## Domain
 
-alx-studio.de
+ak-learn-code.github.io/alx-studio/
 
 ## Logo
 

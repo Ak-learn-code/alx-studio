@@ -916,7 +916,7 @@ Status: Active
 
 ALX Studio  
 Founded by Alexandros Kodalis  
-alx-studio.de
+ak-learn-code.github.io/alx-studio/
 
 ## Links
 
@@ -1102,7 +1102,7 @@ Vercel.
 
 ## Domain
 
-alx-studio.de
+ak-learn-code.github.io/alx-studio/
 
 ## Requirements
 
@@ -1498,7 +1498,7 @@ Alexandros Kodalis
 
 ## Domain
 
-alx-studio.de
+ak-learn-code.github.io/alx-studio/
 
 ## Logo
 

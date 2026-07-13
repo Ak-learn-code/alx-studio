@@ -13,7 +13,7 @@ Es ist die Grundlage für alle weiteren Entscheidungen in Design, Content, Motio
 
 Name: Alexandros Kodalis  
 Brand: ALX Studio  
-Domain: alx-studio.de  
+Domain: ak-learn-code.github.io/alx-studio/  
 Location: Rhein-Neckar-Region / Nähe Mannheim
 
 ## Kurzprofil

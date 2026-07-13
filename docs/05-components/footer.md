@@ -7,7 +7,7 @@ Status: Active
 
 ALX Studio  
 Founded by Alexandros Kodalis  
-alx-studio.de
+ak-learn-code.github.io/alx-studio/
 
 ## Links
 
