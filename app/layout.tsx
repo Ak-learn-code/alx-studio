@@ -14,7 +14,7 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://alx-studio.de"),
+  metadataBase: new URL("https://ak-learn-code.github.io/alx-studio/"),
   title: {
     default: "ALX Studio – Alexandros Kodalis",
     template: "%s | ALX Studio",
