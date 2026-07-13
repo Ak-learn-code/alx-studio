@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
+import { assetPath } from "@/lib/base-path";
 import { cn } from "@/lib/utils";
 
 type VideoSlot = 0 | 1;
@@ -219,7 +220,7 @@ export function HeroVideoBackground({
       aria-hidden="true"
     >
       <Image
-        src="/hero-sektion.png"
+        src={assetPath("/hero-sektion.png")}
         alt=""
         fill
         priority
@@ -242,7 +243,7 @@ export function HeroVideoBackground({
               : "opacity-0"
         )}
         style={{ transition: `opacity ${CROSSFADE_MS}ms ease-in-out` }}
-        src={VIDEO_SRC}
+        src={assetPath(VIDEO_SRC)}
         preload="auto"
         muted
         playsInline
@@ -266,7 +267,7 @@ export function HeroVideoBackground({
               : "opacity-0"
         )}
         style={{ transition: `opacity ${CROSSFADE_MS}ms ease-in-out` }}
-        src={VIDEO_SRC}
+        src={assetPath(VIDEO_SRC)}
         preload="auto"
         muted
         playsInline

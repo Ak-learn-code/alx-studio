@@ -1,3 +1,5 @@
+import { assetPath } from "@/lib/base-path";
+
 type Locale = "de" | "en" | "gr";
 
 type HeadlineFragment = {
@@ -24,22 +26,22 @@ export const whatsappHref = "https://wa.me/4915734741903";
 
 export const referenceLogos = [
   {
-    src: "/pfrimmpark-arena-tight.png",
+    src: assetPath("/pfrimmpark-arena-tight.png"),
     alt: "Pfrimmpark Arena",
     className: "object-contain",
   },
   {
-    src: "/krug-das-restaurant-tight.png",
+    src: assetPath("/krug-das-restaurant-tight.png"),
     alt: "Krug Das Restaurant",
     className: "object-contain",
   },
   {
-    src: "/Bukkador-Fotografie-tight.png",
+    src: assetPath("/Bukkador-Fotografie-tight.png"),
     alt: "Bukkador Fotografie",
     className: "object-contain",
   },
   {
-    src: "/original-logo-white-tight.png",
+    src: assetPath("/original-logo-white-tight.png"),
     alt: "Original Logo",
     className: "object-contain",
   },

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { assetPath } from "@/lib/base-path";
 import {
   clearIntroAsSeen,
   hasSeenIntro,
@@ -37,7 +38,7 @@ function IntroStaticMark({
   return (
     <div className="flex flex-col items-center gap-4 text-center">
       <Image
-        src="/ALX-Studio_logo.svg"
+        src={assetPath("/ALX-Studio_logo.svg")}
         alt="ALX Studio"
         width={960}
         height={540}

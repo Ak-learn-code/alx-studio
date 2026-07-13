@@ -1,22 +1,12 @@
-import { headers } from "next/headers";
-
 import { IntroTransition } from "@/components/intro/intro-transition";
 import { Hero } from "@/components/sections/hero";
-import { isIOSWebKitUserAgent } from "@/lib/is-ios-webkit";
 
-export default async function Home() {
-  const userAgent = (await headers()).get("user-agent") ?? "";
-  const introSkipped = isIOSWebKitUserAgent(userAgent);
-
+export default function Home() {
   return (
     <main className="relative overflow-x-hidden">
-      {introSkipped ? (
+      <IntroTransition>
         <Hero />
-      ) : (
-        <IntroTransition>
-          <Hero />
-        </IntroTransition>
-      )}
+      </IntroTransition>
     </main>
   );
 }

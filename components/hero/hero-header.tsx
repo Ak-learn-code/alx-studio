@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { assetPath } from "@/lib/base-path";
 import { cn } from "@/lib/utils";
 import type { Locale, HeroCopy } from "@/components/hero/hero-data";
 import { whatsappHref } from "@/components/hero/hero-data";
@@ -42,7 +43,7 @@ export function HeroHeader({
             className="pointer-events-none absolute inset-0 z-20 rounded-full opacity-0"
           />
           <Image
-            src="/ALX-Studio_logo.svg"
+            src={assetPath("/ALX-Studio_logo.svg")}
             alt="ALX Studio"
             width={1000}
             height={600}

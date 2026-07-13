@@ -31,6 +31,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 npm run build
 ```
 
+For GitHub Pages, the build uses Next.js static export and writes the published site to `out/`.
+
 ## Lint
 
 ```bash
@@ -58,3 +60,4 @@ If you add private configuration later, keep it in `.env.local` and document onl
 
 - This repository is ready to run locally with the included assets.
 - Build artifacts such as `.next/` are intentionally ignored and should not be committed.
+- The project is configured for GitHub Pages at `https://ak-learn-code.github.io/alx-studio/`.
