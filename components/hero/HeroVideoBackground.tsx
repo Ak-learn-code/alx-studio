@@ -1,10 +1,9 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
 
 import { cn } from "@/lib/utils";
 
@@ -13,15 +12,16 @@ type VideoSlot = 0 | 1;
 type HeroVideoBackgroundProps = {
   className?: string;
   style?: CSSProperties;
-  children?: ReactNode;
 };
 
 const VIDEO_SRC = "/videos/hero-loop.mp4";
 const CROSSFADE_MS = 600;
 const SWITCH_EARLY_MS = 700;
 
-export function HeroVideoBackground({ className, style, children }: HeroVideoBackgroundProps) {
-  const reducedMotion = useReducedMotion() ?? false;
+export function HeroVideoBackground({
+  className,
+  style,
+}: HeroVideoBackgroundProps) {
   const [activeSlot, setActiveSlot] = useState<VideoSlot>(0);
   const [transitioning, setTransitioning] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -39,6 +39,10 @@ export function HeroVideoBackground({ className, style, children }: HeroVideoBac
 
   useEffect(() => {
     const videos = videoRefs.current;
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[ALX] HeroVideo mounted");
+    }
 
     return () => {
       if (transitionTimerRef.current !== null) {
@@ -66,7 +70,7 @@ export function HeroVideoBackground({ className, style, children }: HeroVideoBac
   }, []);
 
   useEffect(() => {
-    if (reducedMotion || hasError) {
+    if (hasError) {
       return;
     }
 
@@ -152,7 +156,9 @@ export function HeroVideoBackground({ className, style, children }: HeroVideoBac
     const tryPlayCurrent = () => {
       if (currentVideo.paused) {
         void currentVideo.play().catch(() => {
-          // Keep the fallback image if the browser refuses playback.
+          if (process.env.NODE_ENV !== "production") {
+            console.log("[ALX] HeroVideo play rejected");
+          }
         });
       }
 
@@ -164,6 +170,9 @@ export function HeroVideoBackground({ className, style, children }: HeroVideoBac
     };
 
     const handlePlaying = () => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[ALX] HeroVideo playing");
+      }
       tryPlayCurrent();
     };
 
@@ -172,6 +181,9 @@ export function HeroVideoBackground({ className, style, children }: HeroVideoBac
     };
 
     const handleError = () => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[ALX] HeroVideo error", currentVideo.error);
+      }
       setHasError(true);
     };
 
@@ -198,11 +210,7 @@ export function HeroVideoBackground({ className, style, children }: HeroVideoBac
       currentVideo.removeEventListener("ended", handleEnded);
       currentVideo.removeEventListener("error", handleError);
     };
-  }, [activeSlot, hasError, reducedMotion]);
-
-  const motionStyle = reducedMotion
-    ? { scale: 1, y: 0 }
-    : undefined;
+  }, [activeSlot, hasError]);
 
   return (
     <div
@@ -210,88 +218,62 @@ export function HeroVideoBackground({ className, style, children }: HeroVideoBac
       style={style}
       aria-hidden="true"
     >
-      <motion.div
-        className="absolute inset-0 will-change-transform"
-        animate={
-          reducedMotion
-            ? motionStyle
-            : {
-                scale: [1, 1.02],
-                y: [0, -8],
-              }
-        }
-        transition={
-          reducedMotion
-            ? undefined
-            : {
-                duration: 20,
-                ease: "linear",
-                repeat: Infinity,
-                repeatType: "mirror",
-              }
-        }
-      >
-        <Image
-          src="/hero-sektion.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center max-[860px]:object-[80%_center] max-[960px]:landscape:object-[56%_32%] max-[640px]:object-[48%_36%]"
-        />
+      <Image
+        src="/hero-sektion.png"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover object-center max-[860px]:object-[80%_center] max-[960px]:landscape:object-[56%_32%] max-[640px]:object-[48%_36%]"
+      />
 
-        <video
-          ref={(node) => {
-            videoRefs.current[0] = node;
-          }}
-          className={cn(
-            "absolute inset-0 h-full w-full object-cover object-center max-[860px]:object-[80%_center] max-[960px]:landscape:object-[56%_32%] max-[640px]:object-[48%_36%]",
-            activeSlot === 0
-              ? transitioning
-                ? "opacity-0"
-                : "opacity-100"
-              : transitioning
-                ? "opacity-100"
-                : "opacity-0"
-          )}
-          style={{ transition: `opacity ${CROSSFADE_MS}ms ease-in-out` }}
-          src={VIDEO_SRC}
-          preload="auto"
-          muted
-          playsInline
-          disablePictureInPicture
-          controls={false}
-          aria-hidden="true"
-        />
+      <video
+        ref={(node) => {
+          videoRefs.current[0] = node;
+        }}
+        className={cn(
+          "absolute inset-0 h-full w-full object-cover object-center max-[860px]:object-[80%_center] max-[960px]:landscape:object-[56%_32%] max-[640px]:object-[48%_36%]",
+          activeSlot === 0
+            ? transitioning
+              ? "opacity-0"
+              : "opacity-100"
+            : transitioning
+              ? "opacity-100"
+              : "opacity-0"
+        )}
+        style={{ transition: `opacity ${CROSSFADE_MS}ms ease-in-out` }}
+        src={VIDEO_SRC}
+        preload="auto"
+        muted
+        playsInline
+        disablePictureInPicture
+        controls={false}
+        aria-hidden="true"
+      />
 
-        <video
-          ref={(node) => {
-            videoRefs.current[1] = node;
-          }}
-          className={cn(
-            "absolute inset-0 h-full w-full object-cover object-center max-[860px]:object-[80%_center] max-[960px]:landscape:object-[56%_32%] max-[640px]:object-[48%_36%]",
-            activeSlot === 1
-              ? transitioning
-                ? "opacity-0"
-                : "opacity-100"
-              : transitioning
-                ? "opacity-100"
-                : "opacity-0"
-          )}
-          style={{ transition: `opacity ${CROSSFADE_MS}ms ease-in-out` }}
-          src={VIDEO_SRC}
-          preload="auto"
-          muted
-          playsInline
-          disablePictureInPicture
-          controls={false}
-          aria-hidden="true"
-        />
-
-        {children}
-
-        <div className="absolute inset-0 bg-black/0" aria-hidden="true" />
-      </motion.div>
+      <video
+        ref={(node) => {
+          videoRefs.current[1] = node;
+        }}
+        className={cn(
+          "absolute inset-0 h-full w-full object-cover object-center max-[860px]:object-[80%_center] max-[960px]:landscape:object-[56%_32%] max-[640px]:object-[48%_36%]",
+          activeSlot === 1
+            ? transitioning
+              ? "opacity-0"
+              : "opacity-100"
+            : transitioning
+              ? "opacity-100"
+              : "opacity-0"
+        )}
+        style={{ transition: `opacity ${CROSSFADE_MS}ms ease-in-out` }}
+        src={VIDEO_SRC}
+        preload="auto"
+        muted
+        playsInline
+        disablePictureInPicture
+        controls={false}
+        aria-hidden="true"
+      />
     </div>
   );
 }

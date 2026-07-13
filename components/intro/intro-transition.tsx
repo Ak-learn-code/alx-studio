@@ -3,7 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import Image from "next/image";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import {
@@ -20,92 +20,14 @@ type TargetPoint = {
   viewportHeight: number;
 };
 
-type IntroPhase = "typing" | "pause" | "reveal";
+type IntroPhase = "idle" | "typing" | "pause" | "reveal" | "done";
 
 const INTRO_LABEL = "Alx Studio";
-
-function IntroTypewriter({
-  active,
-  reducedMotion,
-  restartKey,
-  onComplete,
-}: {
-  active: boolean;
-  reducedMotion: boolean;
-  restartKey: number;
-  onComplete: () => void;
-}) {
-  const [label, setLabel] = useState("");
-  const onCompleteRef = useRef(onComplete);
-
-  useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
-
-  useEffect(() => {
-    if (!active) {
-      return;
-    }
-
-    if (reducedMotion) {
-      const completeTimer = window.setTimeout(() => {
-        onCompleteRef.current();
-      }, 0);
-      return () => {
-        window.clearTimeout(completeTimer);
-      };
-    }
-
-    let isCancelled = false;
-    let charIndex = 0;
-    let frameTimer = 0;
-    let startTimer = 0;
-
-    const tick = () => {
-      if (isCancelled) {
-        return;
-      }
-
-      charIndex += 1;
-      setLabel(INTRO_LABEL.slice(0, charIndex));
-
-      if (charIndex < INTRO_LABEL.length) {
-        frameTimer = window.setTimeout(tick, 110);
-      } else {
-        onCompleteRef.current();
-      }
-    };
-
-    startTimer = window.setTimeout(tick, 260);
-
-    return () => {
-      isCancelled = true;
-      window.clearTimeout(startTimer);
-      window.clearTimeout(frameTimer);
-    };
-  }, [active, reducedMotion, restartKey]);
-
-  const visibleLabel = reducedMotion ? INTRO_LABEL : label;
-
-  return (
-    <p className="flex items-center gap-1 text-[0.78rem] font-semibold tracking-[0.24em] text-black/82 uppercase sm:text-[0.82rem]">
-      <span className="min-w-[0.4ch]">
-        {visibleLabel}
-        <span
-          aria-hidden="true"
-          className={cn(
-            "inline-block translate-y-[0.04em] border-r border-black/65 pr-[0.08em] transition-opacity",
-            visibleLabel.length < INTRO_LABEL.length
-              ? "opacity-100 motion-safe:animate-pulse"
-              : "opacity-0"
-          )}
-        >
-          &nbsp;
-        </span>
-      </span>
-    </p>
-  );
-}
+const TYPING_START_DELAY_MS = 260;
+const TYPING_STEP_MS = 110;
+const PAUSE_MS = 400;
+const REVEAL_MS = 1260;
+const PHASE_MAX_MS = 5000;
 
 function IntroStaticMark({
   children,
@@ -127,18 +49,53 @@ function IntroStaticMark({
   );
 }
 
+function IntroTypewriterText({
+  text,
+  typing,
+}: {
+  text: string;
+  typing: boolean;
+}) {
+  return (
+    <p className="flex items-center gap-1 text-[0.78rem] font-semibold tracking-[0.24em] text-black/82 uppercase sm:text-[0.82rem]">
+      <span className="min-w-[0.4ch]">
+        {text}
+        <span
+          aria-hidden="true"
+          className={cn(
+            "inline-block translate-y-[0.04em] border-r border-black/65 pr-[0.08em]",
+            typing ? "opacity-100" : "opacity-0"
+          )}
+        >
+          &nbsp;
+        </span>
+      </span>
+    </p>
+  );
+}
+
 export function IntroTransition({ children }: { children: ReactNode }) {
-  const reduceMotion = useReducedMotion() ?? false;
-  const [isActive, setIsActive] = useState(true);
-  const [phase, setPhase] = useState<IntroPhase>("typing");
+  const isDev = process.env.NODE_ENV !== "production";
+  const [phase, setPhase] = useState<IntroPhase>("idle");
+  const [typedCount, setTypedCount] = useState(0);
   const [target, setTarget] = useState<TargetPoint | null>(null);
-  const [sequenceId, setSequenceId] = useState(0);
-  const [typingComplete, setTypingComplete] = useState(false);
+  const [typingFinished, setTypingFinished] = useState(false);
   const runIdRef = useRef(0);
-  const phaseTimerRef = useRef(0);
-  const debugIntroEnabled =
-    process.env.NODE_ENV !== "production" &&
-    process.env.NEXT_PUBLIC_DEBUG_INTRO === "true";
+  const phaseTimerRef = useRef<number>(0);
+  const revealTimerRef = useRef<number>(0);
+  const introWasVisibleRef = useRef(false);
+
+  const shouldShowIntro = phase !== "done";
+  const typedText = INTRO_LABEL.slice(0, typedCount);
+  const isTyping = phase === "typing";
+  const showCursor = isTyping && !typingFinished;
+  const isRevealing = phase === "reveal" && target !== null;
+
+  useEffect(() => {
+    if (isDev) {
+      console.log(phase.toUpperCase());
+    }
+  }, [isDev, phase]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -151,39 +108,37 @@ export function IntroTransition({ children }: { children: ReactNode }) {
     if (shouldForceIntro) {
       params.delete("intro");
       const nextSearch = params.toString();
-      const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`;
+      const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${
+        window.location.hash
+      }`;
 
       window.history.replaceState(null, "", nextUrl || window.location.pathname);
       clearIntroAsSeen();
-      return;
+      const startTimer = window.setTimeout(() => {
+        setPhase("typing");
+      }, 0);
+
+      return () => {
+        window.clearTimeout(startTimer);
+      };
     }
 
-    if (!hasSeenIntro()) {
-      return;
-    }
+    const startTimer = window.setTimeout(() => {
+      if (hasSeenIntro()) {
+        setPhase("done");
+        return;
+      }
 
-    const hideTimer = window.setTimeout(() => {
-      setIsActive(false);
+      setPhase("typing");
     }, 0);
 
     return () => {
-      window.clearTimeout(hideTimer);
+      window.clearTimeout(startTimer);
     };
   }, []);
 
-  const replayIntro = () => {
-    clearIntroAsSeen();
-    runIdRef.current += 1;
-    setSequenceId((current) => current + 1);
-    setPhase("typing");
-    setTypingComplete(false);
-    setTarget(null);
-    setIsActive(true);
-  };
-
-  const shouldShowIntro = isActive;
   const handleTypingComplete = useCallback(() => {
-    setTypingComplete(true);
+    setTypingFinished(true);
     setPhase("pause");
   }, []);
 
@@ -206,38 +161,58 @@ export function IntroTransition({ children }: { children: ReactNode }) {
     };
   }, [shouldShowIntro]);
 
+  useEffect(() => {
+    if (!isDev || !shouldShowIntro) {
+      return;
+    }
+
+    console.log("[ALX] Intro visible");
+  }, [isDev, shouldShowIntro]);
+
+  useEffect(() => {
+    if (shouldShowIntro) {
+      introWasVisibleRef.current = true;
+      if (isDev) {
+        console.log("[ALX] Intro phase", phase);
+      }
+      return;
+    }
+
+    if (introWasVisibleRef.current && isDev) {
+      console.log("[ALX] Intro finished");
+    }
+  }, [isDev, phase, shouldShowIntro]);
+
   const measureTarget = useCallback(() => {
     const element = document.getElementById("pupil-target");
     if (!element) {
-      if (debugIntroEnabled) {
+      if (isDev) {
         console.log("[IntroTransition] Marker found: false");
       }
-
+      setTarget(null);
       return;
     }
 
     const rect = element.getBoundingClientRect();
-    const width = window.innerWidth;
-    const height = window.innerHeight;
 
     if (rect.width <= 0 || rect.height <= 0) {
-      if (debugIntroEnabled) {
+      if (isDev) {
         console.log("[IntroTransition] Marker found: true");
         console.log("[IntroTransition] BoundingClientRect", rect);
         console.log("[IntroTransition] Ignored zero-sized marker");
       }
-
+      setTarget(null);
       return;
     }
 
     const nextTarget = {
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2,
-      viewportWidth: width,
-      viewportHeight: height,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
     };
 
-    if (debugIntroEnabled) {
+    if (isDev) {
       console.log("[IntroTransition] Marker found: true");
       console.log("[IntroTransition] BoundingClientRect", rect);
       console.log("[IntroTransition] Calculated target coordinates", {
@@ -247,7 +222,7 @@ export function IntroTransition({ children }: { children: ReactNode }) {
     }
 
     setTarget(nextTarget);
-  }, [debugIntroEnabled]);
+  }, [isDev]);
 
   useLayoutEffect(() => {
     if (!shouldShowIntro) {
@@ -269,56 +244,133 @@ export function IntroTransition({ children }: { children: ReactNode }) {
     scheduleMeasure();
     window.addEventListener("resize", scheduleMeasure, { passive: true });
     window.addEventListener("orientationchange", scheduleMeasure);
-    window.visualViewport?.addEventListener("resize", scheduleMeasure);
-    window.visualViewport?.addEventListener("scroll", scheduleMeasure);
 
     return () => {
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
       window.removeEventListener("resize", scheduleMeasure);
       window.removeEventListener("orientationchange", scheduleMeasure);
-      window.visualViewport?.removeEventListener("resize", scheduleMeasure);
-      window.visualViewport?.removeEventListener("scroll", scheduleMeasure);
     };
-  }, [measureTarget, shouldShowIntro, sequenceId]);
+  }, [measureTarget, shouldShowIntro]);
 
   useEffect(() => {
-    if (!shouldShowIntro || !target) {
+    if (!shouldShowIntro || phase !== "typing") {
       return;
     }
 
-    const currentRunId = runIdRef.current + 1;
-    runIdRef.current = currentRunId;
+    let cancelled = false;
+    let charIndex = 0;
+    let initialTimer = 0;
+    let stepTimer = 0;
+    const runId = ++runIdRef.current;
+    const startedAt = window.performance.now();
 
-    return () => {
-      window.clearTimeout(phaseTimerRef.current);
-    };
-  }, [debugIntroEnabled, reduceMotion, shouldShowIntro, target, sequenceId]);
-
-  useEffect(() => {
-    if (!shouldShowIntro || !target || !typingComplete) {
-      return;
-    }
-
-    window.clearTimeout(phaseTimerRef.current);
-    const currentRunId = runIdRef.current;
-
-    phaseTimerRef.current = window.setTimeout(() => {
-      if (runIdRef.current !== currentRunId) {
+    const finishTyping = () => {
+      if (cancelled || runIdRef.current !== runId) {
         return;
       }
 
-      if (debugIntroEnabled) {
-        console.log("[IntroTransition] Animation target", target);
+      setTypedCount(INTRO_LABEL.length);
+      handleTypingComplete();
+    };
+
+    const tick = () => {
+      if (cancelled || runIdRef.current !== runId) {
+        return;
       }
 
-      setPhase("reveal");
-    }, 400);
+      if (window.performance.now() - startedAt >= PHASE_MAX_MS) {
+        finishTyping();
+        return;
+      }
+
+      charIndex += 1;
+      setTypedCount(charIndex);
+
+      if (charIndex >= INTRO_LABEL.length) {
+        finishTyping();
+        return;
+      }
+
+      stepTimer = window.setTimeout(tick, TYPING_STEP_MS);
+    };
+
+    initialTimer = window.setTimeout(tick, TYPING_START_DELAY_MS);
+    phaseTimerRef.current = window.setTimeout(finishTyping, PHASE_MAX_MS);
 
     return () => {
+      cancelled = true;
+      window.clearTimeout(initialTimer);
+      window.clearTimeout(stepTimer);
       window.clearTimeout(phaseTimerRef.current);
     };
-  }, [debugIntroEnabled, shouldShowIntro, target, typingComplete]);
+  }, [handleTypingComplete, phase, shouldShowIntro]);
+
+  useEffect(() => {
+    if (!shouldShowIntro || phase !== "pause") {
+      return;
+    }
+
+    let cancelled = false;
+    const startedAt = window.performance.now();
+    const currentRun = runIdRef.current;
+
+    const advance = () => {
+      if (cancelled || runIdRef.current !== currentRun) {
+        return;
+      }
+
+      if (target) {
+        setPhase("reveal");
+        return;
+      }
+
+      if (window.performance.now() - startedAt >= PHASE_MAX_MS) {
+        setPhase("done");
+        return;
+      }
+
+      phaseTimerRef.current = window.setTimeout(advance, 50);
+    };
+
+    phaseTimerRef.current = window.setTimeout(advance, PAUSE_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(phaseTimerRef.current);
+    };
+  }, [phase, shouldShowIntro, target]);
+
+  useEffect(() => {
+    if (!shouldShowIntro || phase !== "reveal") {
+      return;
+    }
+
+    const currentRun = runIdRef.current;
+    const finishReveal = () => {
+      if (runIdRef.current !== currentRun) {
+        return;
+      }
+
+      setPhase("done");
+    };
+
+    revealTimerRef.current = window.setTimeout(finishReveal, REVEAL_MS);
+    phaseTimerRef.current = window.setTimeout(finishReveal, PHASE_MAX_MS);
+
+    return () => {
+      window.clearTimeout(revealTimerRef.current);
+      window.clearTimeout(phaseTimerRef.current);
+    };
+  }, [phase, shouldShowIntro]);
+
+  useEffect(() => {
+    if (phase !== "done") {
+      return;
+    }
+
+    markIntroAsSeen();
+  }, [phase]);
 
   const overlayStyle = {
     "--pupil-x": target ? `${target.x}px` : "50vw",
@@ -331,21 +383,10 @@ export function IntroTransition({ children }: { children: ReactNode }) {
         y: target.viewportHeight / 2,
       }
     : null;
-  const isRevealing = phase === "reveal" && target !== null && centerPoint !== null;
 
   return (
     <div className="relative min-h-dvh">
       {children}
-
-      {debugIntroEnabled ? (
-        <button
-          type="button"
-          onClick={replayIntro}
-          className="fixed bottom-4 left-4 z-[998] rounded-full border border-white/10 bg-white/80 px-3 py-1.5 text-[0.65rem] font-semibold tracking-[0.28em] text-black/65 shadow-sm backdrop-blur-md transition hover:bg-white hover:text-black/80"
-        >
-          Replay Intro
-        </button>
-      ) : null}
 
       <AnimatePresence>
         {shouldShowIntro ? (
@@ -361,49 +402,13 @@ export function IntroTransition({ children }: { children: ReactNode }) {
                   : "circle(150% at 50% 50%)",
             }}
             transition={{
-              duration: reduceMotion ? 0.18 : 1.26,
+              duration: phase === "reveal" ? REVEAL_MS / 1000 : 0.18,
               ease: [0.16, 1, 0.3, 1],
             }}
-            onAnimationComplete={() => {
-              if (phase !== "reveal") {
-                return;
-              }
-
-              markIntroAsSeen();
-              setIsActive(false);
-            }}
           >
-            {debugIntroEnabled && target && centerPoint ? (
-              <svg
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 z-[1000]"
-                viewBox={`0 0 ${Math.max(1, target.viewportWidth)} ${Math.max(
-                  1,
-                  target.viewportHeight
-                )}`}
-                preserveAspectRatio="none"
-              >
-                <line
-                  x1={centerPoint.x}
-                  y1={centerPoint.y}
-                  x2={target.x}
-                  y2={target.y}
-                  stroke="rgba(239, 68, 68, 0.7)"
-                  strokeWidth="1"
-                  strokeDasharray="6 6"
-                />
-              </svg>
-            ) : null}
-
-            {debugIntroEnabled && target ? (
-              <div className="pointer-events-none absolute bottom-4 left-4 z-[1001] rounded-full border border-black/10 bg-white/85 px-3 py-1.5 text-[0.65rem] font-semibold tracking-[0.16em] text-black/65 shadow-sm backdrop-blur-md">
-                {`x ${target.x.toFixed(1)} · y ${target.y.toFixed(1)}`}
-              </div>
-            ) : null}
-
             {isRevealing && centerPoint ? (
               <motion.div
-                className="fixed left-0 top-0 z-[1000] pointer-events-none will-change-transform"
+                className="pointer-events-none fixed left-0 top-0 z-[1000] will-change-transform"
                 initial={{
                   x: centerPoint.x,
                   y: centerPoint.y,
@@ -417,7 +422,7 @@ export function IntroTransition({ children }: { children: ReactNode }) {
                   scale: 0.04,
                 }}
                 transition={{
-                  duration: reduceMotion ? 0.18 : 1.12,
+                  duration: REVEAL_MS / 1000,
                   ease: [0.16, 1, 0.3, 1],
                 }}
               >
@@ -432,24 +437,10 @@ export function IntroTransition({ children }: { children: ReactNode }) {
             ) : (
               <div className="absolute inset-0 flex items-center justify-center px-6">
                 <IntroStaticMark>
-                  <IntroTypewriter
-                    active={shouldShowIntro}
-                    reducedMotion={reduceMotion}
-                    restartKey={sequenceId}
-                    onComplete={handleTypingComplete}
-                  />
+                  <IntroTypewriterText text={typedText} typing={showCursor} />
                 </IntroStaticMark>
               </div>
             )}
-
-            {debugIntroEnabled && target && centerPoint ? (
-              <div className="pointer-events-none absolute left-0 top-0 z-[1002]">
-                <div
-                  className="absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-500 shadow-[0_0_0_12px_rgba(239,68,68,0.16)]"
-                  style={{ left: target.x, top: target.y }}
-                />
-              </div>
-            ) : null}
           </motion.div>
         ) : null}
       </AnimatePresence>
